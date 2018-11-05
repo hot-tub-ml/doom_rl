@@ -63,3 +63,10 @@ def play_episode():
 #     game.close()
     return frames, labels
 
+def stack_frames(frames, history_length=6):
+    stacks = [np.hstack(frames[ix:ix+history_length]) \
+              for ix in range(len(frames)- history_length)]
+    stacks = np.asarray(stacks)
+    # new_shape = stacks.shape + (1,) # add fourth dummy dim
+    # stacks = np.reshape(stacks, new_shape)
+    return stacks
