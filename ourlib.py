@@ -36,7 +36,7 @@ def preprocess_frame(img):
     frame = frame[50:200, :]
     frame /= 255
 #     plt.imshow(frame);
-    frame2 = skimage.transform.resize(frame, [84, 84])
+    frame2 = skimage.transform.resize(frame, [48, 48])
 #     plt.imshow(frame2);
     return frame2
 
