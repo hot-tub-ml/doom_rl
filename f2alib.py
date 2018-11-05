@@ -75,7 +75,7 @@ def stack_frames(frames, history_length=6):
     return stacks
 
 
-def frames2action_model():
+def f2a_model():
     model = models.Sequential()
     model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(48, 288, 1)))
     model.add(layers.MaxPooling2D((2,2)))
@@ -110,4 +110,18 @@ def get_images_labels(number, history_length=6):
             trn_labels = np.append(trn_labels, labels)
         if len(trn_labels) > number:
             break
+    # add fourth dummy dim to images
+    new_shape = trn_images.shape + (1,) # add fourth dummy dim
+    trn_images = np.reshape(trn_images, new_shape)
     return trn_images, trn_labels
+
+def oh_labels(labels):
+    from sklearn.preprocessing import LabelEncoder
+    from sklearn.preprocessing import OneHotEncoder
+    le = LabelEncoder()
+    oh = OneHotEncoder()
+    labels_le = le.fit_transform(labels)
+    labels_le = np.reshape(labels_le, (-1, 1))
+    labels_le.shape
+    labels_oh = oh.fit_transform(labels_le)
+    return labels_oh
