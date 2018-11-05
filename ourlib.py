@@ -3,6 +3,8 @@ from vizdoom import *
 import time
 import random
 import skimage
+from tensorflow.keras import layers
+from tensorflow.keras import models
 
 game = DoomGame()  # must be global
 
@@ -48,19 +50,20 @@ def play_episode():
         in each frame.
     """
     global game
-    game.new_episode()
     frames = []
-    labels = []
-    while not game.is_episode_finished():
-        state = game.get_state()
-        img = state.screen_buffer
-        frame = preprocess_frame(img)
-        action = random.choice(possible_actions)
-        labels.append(action_dict[repr(action)])
-        reward = game.make_action(action)
-        time.sleep(10 ** -5)
-        frames.append(frame)
-#     game.close()
+    while len(frames) < 24:  # repeat if episode is too short
+        game.new_episode()
+        frames = []
+        labels = []
+        while not game.is_episode_finished():
+            state = game.get_state()
+            img = state.screen_buffer
+            frame = preprocess_frame(img)
+            action = random.choice(possible_actions)
+            labels.append(action_dict[repr(action)])
+            reward = game.make_action(action)
+            time.sleep(10 ** -5)
+            frames.append(frame)
     return frames, labels
 
 def stack_frames(frames, history_length=6):
@@ -70,3 +73,41 @@ def stack_frames(frames, history_length=6):
     # new_shape = stacks.shape + (1,) # add fourth dummy dim
     # stacks = np.reshape(stacks, new_shape)
     return stacks
+
+
+def frames2action_model():
+    model = models.Sequential()
+    model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(48, 288, 1)))
+    model.add(layers.MaxPooling2D((2,2)))
+    model.add(layers.Conv2D(32, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D((2,2)))
+    model.add(layers.Conv2D(32, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D((3,3)))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(32, activation='relu'))
+    model.add(layers.Dense(3, activation='softmax'))
+    model.compile(optimizer='rmsprop',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+    return model
+
+def get_images_labels(number, history_length=6):
+    """
+        Get at least `number` of images and labels 
+        by playing as many episodes as needed.
+    """
+    trn_images = None
+    trn_labels = None
+    while True:
+        frames, labels = play_episode()
+        stacks = stack_frames(frames, history_length)
+        labels = labels[:-history_length]
+        if trn_images is None or trn_labels is None:
+            trn_images = stacks
+            trn_labels = labels
+        else:
+            trn_images = np.append(trn_images, stacks, axis=0)
+            trn_labels = np.append(trn_labels, labels)
+        if len(trn_labels) > number:
+            break
+    return trn_images, trn_labels
